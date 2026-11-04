@@ -19,29 +19,32 @@ from common import RESULTS  # noqa: E402,F401
 from dualflow3.io import read_jsonl, write_jsonl  # noqa: E402
 from dualflow3.outcomes import Outcome, classify, label  # noqa: E402
 from dualflow3.proposal import Proposal, epsilon  # noqa: E402
-from dualflow3.tasks import SEED_TASKS  # noqa: E402
+from dualflow3.tasks import BASE_TASKS, SEED_TASKS  # noqa: E402
+from dualflow3.tasks_v1 import SEED_TASKS_V1  # noqa: E402
 
-TASKS = {t.task_id: t for t in SEED_TASKS}
+# keyed by (domain, task_id): v1 (file-task) and current ids overlap, e.g. hr_clear in "hr" and in "hr_ops"
+TASKS = {(t.domain, t.task_id): t for t in (*SEED_TASKS_V1, *BASE_TASKS, *SEED_TASKS)}
 
 
 def rescore(rec: dict) -> dict:
-    task = TASKS[rec["task_id"]]
+    task = TASKS[(rec["domain"], rec["task_id"])]
     j = 0
     executed = []
     steps = []
     for s in rec["steps"]:
         ars_p, ars_e = Proposal.from_dict(s["ars_p"]), Proposal.from_dict(s["ars_e"])
         execute = s["decision"]["execute"]
+        irr, neutral = task.environment.irreversible, task.environment.neutral
         if j >= task.length:
             kind, intended, eps = "extra", None, None
-            lab = label(ars_e, None, task.policy, task.state)
-        elif ars_p.action == "read" and ars_e.action == "read" and task.intended[j].action != "read":
+            lab = label(ars_e, None, task.policy, task.state, irr)
+        elif ars_p.action in neutral and ars_e.action in neutral and task.intended[j].action not in neutral:
             kind, intended, eps = "neutral_read", None, None
-            lab = label(ars_e, ars_e, task.policy, task.state)
+            lab = label(ars_e, ars_e, task.policy, task.state, irr)
         else:
             kind, intended = "intended", task.intended[j]
             eps = epsilon(intended, ars_p, ars_e).to_dict()
-            lab = label(ars_e, intended, task.policy, task.state)
+            lab = label(ars_e, intended, task.policy, task.state, irr)
             j += 1
         outcome = classify(execute, lab)
         if execute and kind != "neutral_read":

@@ -24,7 +24,7 @@ from common import (DEFAULT_EXECUTOR, MAX_ROUNDS, N_RESTATEMENTS, PLANNER_MODEL,
 from dualflow3.agents import ExecutorAgent, PlannerAgent  # noqa: E402
 from dualflow3.io import append_jsonl  # noqa: E402
 from dualflow3.protocol import CONDITIONS, run_episode  # noqa: E402
-from dualflow3.tasks import DOMAINS, KINDS, seed_tasks  # noqa: E402
+from dualflow3.tasks import DOMAINS, KINDS, VARIANTS, seed_tasks  # noqa: E402
 
 
 def main() -> None:
@@ -35,6 +35,8 @@ def main() -> None:
     ap.add_argument("--domains", nargs="+", default=list(DOMAINS), choices=DOMAINS)
     ap.add_argument("--kinds", nargs="+", default=list(KINDS), choices=KINDS)
     ap.add_argument("--max-length", type=int, default=None, help="only tasks with L <= this")
+    ap.add_argument("--variants", nargs="+", default=list(VARIANTS), choices=VARIANTS,
+                    help="request phrasing: explicit (steps and stopping point named) / open (goal only)")
     ap.add_argument("--planner", default=PLANNER_MODEL)
     ap.add_argument("--executor", default=DEFAULT_EXECUTOR)
     ap.add_argument("--n-restatements", type=int, default=N_RESTATEMENTS)
@@ -45,7 +47,8 @@ def main() -> None:
     ap.add_argument("--workers", type=int, default=1, help="episodes run concurrently (threads)")
     args = ap.parse_args()
 
-    tasks = [t for t in seed_tasks(max_length=args.max_length) if t.domain in args.domains and t.kind in args.kinds]
+    tasks = [t for t in seed_tasks(max_length=args.max_length, variants=tuple(args.variants))
+             if t.domain in args.domains and t.kind in args.kinds]
     name = args.name or ("dry_run" if args.dry_run else f"{'_'.join(args.conditions)}_{args.executor}")
     out = RESULTS / name
     out.mkdir(parents=True, exist_ok=True)
@@ -88,6 +91,7 @@ def main() -> None:
                 print(f"  [{counts['done']}/{len(jobs)}] ERROR {task.task_id} {cond} #{rep}: {e}", file=sys.stderr)
             return
         rec = {**ep.to_dict(), "repeat": rep, "domain": task.domain, "kind": task.kind, "length": task.length,
+               "variant": task.variant,
                "planner_model": args.planner, "executor_model": args.executor}
         with lock:   # record first: nothing after this line can lose the episode
             counts["done"] += 1

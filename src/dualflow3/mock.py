@@ -38,8 +38,9 @@ def _executed(payload: dict) -> list[Proposal]:
 def _chain_pointer(task: Task, executed: list[Proposal]) -> int:
     """Where in the intended chain we are, skipping neutral reads (same rule as protocol.run_episode)."""
     j = 0
+    neutral = task.environment.neutral
     for e in executed:
-        if j < task.length and e.action == "read" and task.intended[j].action != "read":
+        if j < task.length and e.action in neutral and task.intended[j].action not in neutral:
             continue
         j += 1
     return j

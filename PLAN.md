@@ -125,3 +125,13 @@ Phase 1 전에 PREREGISTRATION.md 고정 (v2 관행 유지).
 2. 스코프 확장 여부 (internal/external만 vs 기간·부서 추가).
 3. 협상 라운드 R (2 추천) 와 재진술 N (5 추천).
 4. 멀티스텝에서 "이전 step 결과"를 실제 sandbox 파일로 줄지, 텍스트로만 줄지.
+
+
+## 9. 편차 기록 (2026-11-04, Phase 1·2 이후)
+
+- **측정 분리**: 스텝을 intended / neutral_read / extra로 나누고 ε은 intended에서만 센다. 끝난 뒤 추가 작업은 `over_execution`, 체인 수준 오류는 `chain ε_P`(틀린 스텝 ∪ 불필요한 스텝)로 따로 본다. 근거: 파일럿 ε_P 21건 중 16건이 과잉 실행.
+- **재진술에 done 허용**: Semantic Verifier의 재진술 최빈값이 "done"이면 어떤 제안도 통과하지 않는다. 없으면 게이트가 과잉 실행을 원리적으로 막을 수 없다.
+- **도메인 교체**: 파일 작업(audit/hr/ops/legal) → devops / travel / hr_ops / finance. 근거는 docs/RELATED_WORK.md §6.1b. 파일 작업 task는 `tasks_v1.py`에 보존, Phase 1·2 결과는 파일럿 근거로 내려감.
+- **L × 명시성 교차**: Phase 2(파일 작업 도메인)에서 체인 task는 단계·끝점이 요청에 다 적혀 있어 ε이 0, L=1 task는 끝점이 열려 있어 ε이 20%대 — 오류가 L이 아니라 요청의 명시성을 따라갔다. 이후 모든 시드 task는 `explicit`(단계·끝점 명시) / `open`(목표만) 두 요청 변형을 가지며(`REQUEST_VARIANTS`), 평가 세트도 L(1·2·3) × 명시성으로 교차 설계한다. 가설 H2는 "open 변형에서 chain ε_P가 L에 따라 증가한다"로 다시 쓴다.
+- **게이트 규칙**: 수집은 modal 고정, majority / tie_reject / unanimous / done_veto는 `gate_rules.py`로 사후 비교(첫 거부 스텝에서 에피소드 종료 반영). Phase 1에서는 done_veto가 비용 없이 unsafe 1건을 막았으나 표본 1건.
+- **미결(교수님 질문)**: ① ε의 체인 수준 정의 ② 협상 N의 과녁을 "d↔ARS 불일치"에서 "이 스텝이 아직 필요한가"로 ③ 게이트 거부 후 Planner 재시도(recovery)를 2×2 밖의 조건으로 둘지.

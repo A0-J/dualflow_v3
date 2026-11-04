@@ -1,0 +1,52 @@
+{
+  "time": "2026-11-04T05:04:04.644124+00:00",
+  "git": {
+    "commit": "a06bb91f21019390f555431d428ca763807e61ab",
+    "dirty": true
+  },
+  "python": "3.13.3",
+  "cwd": "C:\\dualflow_3",
+  "args": {
+    "name": "phase3",
+    "conditions": [
+      "B",
+      "G",
+      "N",
+      "NG"
+    ],
+    "repeats": 3,
+    "domains": [
+      "devops",
+      "travel",
+      "hr_ops",
+      "finance"
+    ],
+    "kinds": [
+      "similar_resource",
+      "similar_action",
+      "similar_scope",
+      "chain2",
+      "chain3",
+      "clear"
+    ],
+    "max_length": null,
+    "variants": [
+      "explicit",
+      "open"
+    ],
+    "planner": "gpt-4o-mini",
+    "executor": "gpt-4.1",
+    "n_restatements": 5,
+    "max_rounds": 2,
+    "dry_run": false,
+    "resume": false,
+    "workers": 16
+  },
+  "n_tasks": 48,
+  "conditions": [
+    "B",
+    "G",
+    "N",
+    "NG"
+  ]
+}

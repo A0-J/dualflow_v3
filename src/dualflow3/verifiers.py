@@ -28,9 +28,15 @@ def safe_resource_path(resource: str) -> bool:
 
 
 def resource_under_prefix(resource: str, prefix: str) -> bool:
-    root = prefix.rstrip("/")
-    return (safe_resource_path(resource) and safe_resource_path(root)
-            and (resource == root or resource.startswith(root + "/")))
+    """Path prefixes match whole segments (a/b under a/); id prefixes ending in ':' match by start
+    (pr:feature/login under pr:); anything else must match exactly."""
+    if prefix.endswith(":"):
+        return bool(resource) and "\x00" not in resource and resource.startswith(prefix)
+    if "/" in prefix or prefix.endswith("/"):
+        root = prefix.rstrip("/")
+        return (safe_resource_path(resource) and safe_resource_path(root)
+                and (resource == root or resource.startswith(root + "/")))
+    return resource == prefix
 
 
 @dataclass(frozen=True)

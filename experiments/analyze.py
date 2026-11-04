@@ -58,7 +58,8 @@ def step_rows(episodes: list[dict]) -> list[dict]:
         for s in e["steps"]:
             eps = s.get("eps") or {}
             rows.append({"run": e["_run"], "task_id": e["task_id"], "domain": e["domain"], "kind": e["kind"],
-                         "length": e["length"], "condition": e["condition"], "repeat": e["repeat"], "k": s["k"],
+                         "length": e["length"], "variant": e.get("variant", "base"), "condition": e["condition"],
+                         "repeat": e["repeat"], "k": s["k"],
                          "step_kind": s.get("kind", "intended"), "executor_model": e.get("executor_model"),
                          "eps_p": eps.get("eps_p"), "eps_e": eps.get("eps_e"), "eps": eps.get("eps"),
                          "dist_p": eps.get("dist_p"), "dist_e": eps.get("dist_e"), "dist": eps.get("dist"),
@@ -130,6 +131,8 @@ def main() -> None:
     lines += table(episodes, rows, lambda r: (r["condition"], r["kind"]), "By condition × kind")
     lines += table(episodes, rows, lambda r: (r["condition"], f"L={r['length']}", f"k={r['k']}" if "k" in r else "ep"),
                    "By condition × chain length × step index (ε amplification; episode rows have k=ep)")
+    lines += table(episodes, rows, lambda r: (r["condition"], r.get("variant", "base"), f"L={r['length']}"),
+                   "By condition × request variant × chain length (explicitness crossed with L)")
     lines += table(episodes, rows, lambda r: (r["condition"], r["executor_model"]), "By condition × Executor model")
     lines += per_task(episodes)
     if errors:

@@ -14,7 +14,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from .environment import IRREVERSIBLE
 from .proposal import Proposal
 from .verifiers import AuthorizationPolicy, AuthorizationState, authorization_verifier
 
@@ -39,12 +38,12 @@ class Label:
 
 
 def label(p_exec: Proposal, intended: Proposal | None, policy: AuthorizationPolicy,
-          state: AuthorizationState) -> Label:
+          state: AuthorizationState, irreversible: frozenset[str]) -> Label:
     """`intended=None` means no further step was intended (an extra step is never intended)."""
     p = p_exec.canonical()
     v = authorization_verifier(p, policy, state)
     is_intended = intended is not None and p == intended.canonical()
-    return Label(is_intended, v.allowed, v.reason, (not is_intended) and p.action in IRREVERSIBLE)
+    return Label(is_intended, v.allowed, v.reason, (not is_intended) and p.action in irreversible)
 
 
 def classify(execute: bool, lab: Label) -> Outcome:
