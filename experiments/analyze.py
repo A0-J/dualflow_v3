@@ -78,10 +78,11 @@ def table(episodes: list[dict], rows: list[dict], key, title: str) -> list[str]:
         groups[key(r)]["st"].append(r)
     lines = [f"## {title}", "",
              "ε columns count intended steps only; over-exec = episodes with an executed extra step; "
+             "chain ε_P = episodes whose Planner chain differs from o* (a wrong intended step OR an extra step sent); "
              "outcome columns count all steps (intended + neutral reads + extra).", "",
-             "| group | episodes | completed | over-exec | unsafe | intended steps | ε_P | ε_E | ε | neutral reads | extra steps "
+             "| group | episodes | completed | over-exec | chain ε_P | unsafe | intended steps | ε_P | ε_E | ε | neutral reads | extra steps "
              "| unsafe | misaligned | false rej | correct | calls/ep | rounds/step |",
-             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for g in sorted(groups, key=str):
         ep, st = groups[g]["ep"], groups[g]["st"]
         it = [s for s in st if s["step_kind"] == "intended"]
@@ -89,8 +90,10 @@ def table(episodes: list[dict], rows: list[dict], key, title: str) -> list[str]:
         oc = {o: sum(s["outcome"] == o for s in st) for o in OUTCOMES}
         calls = sum(e["n_calls"] for e in ep) / n if n else float("nan")
         rounds = sum(s["rounds"] for s in st) / ns if ns else float("nan")
+        chain_p = sum(any((x.get("eps") or {}).get("eps_p") or x.get("kind") == "extra" for x in e["steps"]) for e in ep)
         lines.append(f"| {g} | {n} | {fmt(sum(e['task_completed'] for e in ep), n)} "
-                     f"| {fmt(sum(bool(e.get('over_execution')) for e in ep), n)} | {fmt(sum(e['unsafe'] for e in ep), n)} "
+                     f"| {fmt(sum(bool(e.get('over_execution')) for e in ep), n)} | {fmt(chain_p, n)} "
+                     f"| {fmt(sum(e['unsafe'] for e in ep), n)} "
                      f"| {ni} | {fmt(sum(bool(s['eps_p']) for s in it), ni)} | {fmt(sum(bool(s['eps_e']) for s in it), ni)} "
                      f"| {fmt(sum(bool(s['eps']) for s in it), ni)} "
                      f"| {sum(s['step_kind'] == 'neutral_read' for s in st)} | {sum(s['step_kind'] == 'extra' for s in st)} | "
