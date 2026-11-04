@@ -22,17 +22,27 @@ from .llm import LLMResponse
 from .proposal import Proposal
 from .tasks import Task
 
-_EXECUTED_RE = re.compile(r"^\d+\. ", re.MULTILINE)
+_EXECUTED_RE = re.compile(r"^\d+\. (\S+) (\S+) \((\S+)\)$", re.MULTILINE)
 
 
 def _resp(obj: dict) -> LLMResponse:
     return LLMResponse(json.dumps(obj), "oracle", "oracle", 0, 0, 0, 0.0, None, None)
 
 
-def _steps_done(payload: dict) -> int:
+def _executed(payload: dict) -> list[Proposal]:
     ctx = payload.get("runtime_context", "")
     tail = ctx.split("Already executed in this task", 1)
-    return len(_EXECUTED_RE.findall(tail[1])) if len(tail) == 2 else 0
+    return [Proposal(a, r, sc) for a, r, sc in _EXECUTED_RE.findall(tail[1])] if len(tail) == 2 else []
+
+
+def _chain_pointer(task: Task, executed: list[Proposal]) -> int:
+    """Where in the intended chain we are, skipping neutral reads (same rule as protocol.run_episode)."""
+    j = 0
+    for e in executed:
+        if j < task.length and e.action == "read" and task.intended[j].action != "read":
+            continue
+        j += 1
+    return j
 
 
 class OracleLLM:
@@ -50,7 +60,7 @@ class OracleLLM:
 
     def generate(self, *, instructions: str, input_text: str) -> LLMResponse:
         payload = json.loads(input_text)
-        k = _steps_done(payload)
+        k = _chain_pointer(self.task, _executed(payload))
         role = instructions.split("\n", 1)[0]
         self.calls.append((role, payload))
         intended = self.task.intended[k] if k < self.task.length else None
@@ -65,7 +75,7 @@ class OracleLLM:
             ars = intended if (self.confirm_fixes and intended is not None) else Proposal.from_dict(payload["fields"])
             return _resp({**ars.to_dict(), "answer": "[oracle] confirmed"})
         if instructions.startswith("You are the planner agent carrying out"):                # restate
-            return _resp((intended or Proposal("read", "", "internal")).to_dict())
+            return _resp(intended.to_dict() if intended is not None else {"done": True})
         if instructions.startswith("You are the executor agent"):
             ars_p = Proposal.from_dict(payload["fields"])
             if "decision" in instructions and "planner_answer" not in payload:               # propose_or_flag

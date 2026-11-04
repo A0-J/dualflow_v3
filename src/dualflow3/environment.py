@@ -21,8 +21,8 @@ from .proposal import Proposal
 
 ACTIONS: dict[str, str] = {
     "read": "open and read a file; changes nothing",
-    "summarize": "write an internal summary of a file to summaries/<same path>",
-    "extract": "copy only the key figures or clauses of a file to extracts/<same path>",
+    "summarize": "write an internal summary of a file to summaries/<same path> (reads the file itself; no separate read needed)",
+    "extract": "copy only the key figures or clauses of a file to extracts/<same path> (reads the file itself)",
     "anonymize": "write a copy of a file with personal data removed to anonymized/<same path>",
     "archive_copy": "store an unchanged copy of a file under archive/<same path>",
     "overwrite": "replace the file's contents in place with a revised version (cannot be undone)",

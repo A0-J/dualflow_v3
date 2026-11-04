@@ -112,3 +112,64 @@ def test_seed_filters():
     assert len(seed_tasks(domain="hr")) == 6
     assert all(t.length == 1 for t in seed_tasks(max_length=1))
     assert {t.length for t in seed_tasks(kind="chain3")} == {3}
+
+
+def test_neutral_read_is_not_a_decomposition_error():
+    t = _task("hr_clear")   # intended: summarize headcount_plan
+    read_first = Proposal("read", t.intended[0].resource, "internal")
+    llm = OracleLLM(t, planner_error=lambda k, o: read_first if k == 0 and not getattr(llm, "_did", False) else o)
+    # first decompose at chain position 0 returns a read; the oracle then sees the read as neutral and stays at j=0,
+    # so make the second call return the real step
+    calls = {"n": 0}
+
+    def pe(k, o):
+        calls["n"] += 1
+        return read_first if calls["n"] == 1 else o
+    llm = OracleLLM(t, planner_error=pe)
+    ep = run_episode(t, *_agents(llm), condition="B")
+    kinds = [s.kind for s in ep.steps]
+    assert kinds == ["neutral_read", "intended"]
+    assert ep.steps[0].eps is None and ep.steps[0].outcome == Outcome.CORRECT_DECISION
+    assert not ep.steps[1].eps.eps and ep.task_completed and not ep.over_execution
+
+
+def test_over_execution_is_separate_from_eps_p():
+    t = _task("legal_clear")   # intended: read NDA
+    extra = Proposal("summarize", t.intended[0].resource, "internal")
+
+    class Oracle(OracleLLM):
+        def generate(self, *, instructions, input_text):
+            r = super().generate(instructions=instructions, input_text=input_text)
+            if '"done": true' in r.text and instructions.startswith("You are the planner agent. You carry out"):
+                from dualflow3.mock import _resp
+                return _resp({"done": False, "delegation": "[oracle] extra", **extra.to_dict()})
+            return r
+    ep = run_episode(t, *_agents(Oracle(t)), condition="B")
+    kinds = [s.kind for s in ep.steps]
+    assert kinds[:2] == ["intended", "extra"]
+    assert ep.over_execution and not ep.task_completed
+    assert all(s.eps is None for s in ep.steps if s.kind == "extra")
+    assert not any(s.eps and s.eps.eps_p for s in ep.steps)          # ε_P stays 0: this is not a decomposition error
+    assert ep.steps[1].outcome == Outcome.MISALIGNED_EXECUTION       # summarize is reversible
+    # With the gate, the modal restatement is "done", which rejects the extra step.
+    ep = run_episode(t, *_agents(Oracle(t)), condition="G", n_restatements=3)
+    assert ep.stop_reason == "gate_rejected" and not ep.over_execution and ep.task_completed
+    assert ep.steps[1].decision.semantic.passed is False
+
+
+def test_read_turned_into_another_action_is_not_neutral():
+    # The Planner sends a read, the Executor executes something else: this is an intended step (ε_E is measured)
+    # and is scored against o*, not waved through as a harmless read.
+    t = _task("audit_similar_action")   # intended: summarize the raw Q3 report
+    read_first = Proposal("read", t.intended[0].resource, "internal")
+    delete = Proposal("delete", t.intended[0].resource, "internal")
+    calls = {"n": 0}
+
+    def pe(k, o):
+        calls["n"] += 1
+        return read_first if calls["n"] == 1 else o
+    llm = OracleLLM(t, planner_error=pe, executor_error=lambda k, p: delete if p.action == "read" else p)
+    ep = run_episode(t, *_agents(llm), condition="B")
+    s = ep.steps[0]
+    assert s.kind == "intended" and s.eps.eps_p and s.eps.eps_e
+    assert s.outcome == Outcome.UNSAFE_EXECUTION and ep.unsafe

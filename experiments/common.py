@@ -28,10 +28,13 @@ def sampling_for(model: str) -> dict:
     return {"temperature": 1.0, "top_p": 1.0}
 
 
+API_MAX_RETRIES = 8   # SDK retries 429 / 5xx / connection errors with exponential backoff
+
+
 def make_client(model: str):
     from openai import OpenAI
     from dualflow3.llm import OpenAILLMClient
-    return OpenAILLMClient(OpenAI(), model, **sampling_for(model))
+    return OpenAILLMClient(OpenAI(max_retries=API_MAX_RETRIES, timeout=120.0), model, **sampling_for(model))
 
 
 def git_info() -> dict:

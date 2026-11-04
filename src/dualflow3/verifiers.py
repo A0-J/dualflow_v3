@@ -5,8 +5,9 @@ Executor Agent's final tuple ARS_E before anything runs:
 
 - Semantic Verifier (V_sem): the Planner Agent restates the intended tuple N
   times from the user request and its private context -- NOT from d or
-  ARS_P, so a shared error carried in d is not simply confirmed. V_sem = 1
-  iff ARS_E equals the modal restatement.
+  ARS_P, so a shared error carried in d is not simply confirmed. A
+  restatement may also be "done" (nothing further intended). V_sem = 1 iff
+  ARS_E equals the modal restatement; a modal "done" rejects every proposal.
 - Authorization Verifier (V_auth): deterministic check of ARS_E against the
   policy π and the approval state σ, both managed outside the agents.
 - Gate: D = V_sem ∧ V_auth.
@@ -17,7 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .proposal import Proposal, modal
+from .proposal import DONE, Proposal, modal
 
 
 def safe_resource_path(resource: str) -> bool:
@@ -40,6 +41,8 @@ class SemanticVerdict:
 
 def semantic_verifier(proposal: Proposal, restatements: list[Proposal]) -> SemanticVerdict:
     intent = modal(restatements)
+    if intent == DONE:                      # the Planner Agent's modal intent is "nothing further": no proposal passes
+        return SemanticVerdict(False, intent)
     return SemanticVerdict(proposal.canonical() == intent, intent)
 
 

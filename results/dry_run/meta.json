@@ -1,11 +1,11 @@
 {
-  "time": "2026-11-04T02:54:43.887495+00:00",
+  "time": "2026-11-04T04:45:33.436652+00:00",
   "git": {
-    "commit": null,
-    "dirty": null
+    "commit": "b40fc5b131d4ecfd3686c6a6eff412f0945131fd",
+    "dirty": true
   },
-  "python": "3.13.18",
-  "cwd": "/home/claude/dualflow_3",
+  "python": "3.13.3",
+  "cwd": "C:\\dualflow_3",
   "args": {
     "name": null,
     "conditions": [
@@ -35,7 +35,8 @@
     "n_restatements": 5,
     "max_rounds": 2,
     "dry_run": true,
-    "resume": false
+    "resume": false,
+    "workers": 8
   },
   "n_tasks": 24,
   "conditions": [

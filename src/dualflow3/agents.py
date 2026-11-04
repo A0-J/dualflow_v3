@@ -3,7 +3,7 @@
 Planner Agent (sees user request, private context, runtime context, history):
   decompose  -> next step as d + ARS_P, or done
   confirm    -> answers the Executor Agent's field-level question; returns ARS (may revise)
-  restate    -> intended tuple for the current step, from request + context only (for the Semantic Verifier)
+  restate    -> intended tuple for the current step, or done, from request + context only (Semantic Verifier)
 
 Executor Agent (sees d, ARS_P, runtime context; never the private context):
   propose    -> ARS_E (may revise ARS_P when d says otherwise)
@@ -20,7 +20,7 @@ from typing import Any
 
 from .llm import LLMClient, LLMResponse
 from .parsing import parse_json_object
-from .proposal import FIELDS, Proposal, parse_proposal
+from .proposal import DONE, FIELDS, Proposal, parse_proposal
 
 ARS = '"action":"...","resource":"...","scope":"..."'
 
@@ -68,9 +68,10 @@ Return exactly one JSON object with this schema and no prose:
 {{{ARS},"answer":"<one sentence>"}}
 Keep the fields unchanged unless the question shows they were wrong. Each field must be exactly one label listed in the runtime context."""
 
-    RESTATE = f"""You are the planner agent carrying out the user's request through an executor agent, one operation at a time. The runtime context lists what has already been executed. State the single NEXT operation you intend.
-Return exactly one JSON object with this schema and no prose:
+    RESTATE = f"""You are the planner agent carrying out the user's request through an executor agent, one operation at a time. The runtime context lists what has already been executed. State the single NEXT operation you intend, or declare that nothing further is needed.
+Return exactly one JSON object with one of these two schemas and no prose:
 {{{ARS}}}
+{{"done":true}}
 Each field must be exactly one label listed in the runtime context."""
 
     def __init__(self, llm: LLMClient) -> None:
@@ -99,7 +100,8 @@ Each field must be exactly one label listed in the runtime context."""
     def restate(self, *, user_request: str, private_context: str, context: str) -> ProposalCall:
         r = self.llm.generate(instructions=self.RESTATE, input_text=_payload(
             user_request=user_request, private_task_context=private_context, runtime_context=context))
-        return ProposalCall(parse_proposal(r.text), r)
+        obj = parse_json_object(r.text)
+        return ProposalCall(DONE if obj.get("done") is True else parse_proposal(obj), r)
 
 
 class ExecutorAgent:

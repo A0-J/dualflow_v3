@@ -22,6 +22,7 @@ from typing import Any, Iterable
 from .parsing import parse_json_object
 
 FIELDS = ("action", "resource", "scope")
+DONE_ACTION = "__done__"
 
 
 def _norm(value: Any) -> str:
@@ -55,6 +56,9 @@ def parse_proposal(obj_or_text: dict | str) -> Proposal:
     if missing:
         raise ValueError(f"Missing proposal fields: {sorted(missing)}")
     return Proposal.from_dict(obj)
+
+
+DONE = Proposal(DONE_ACTION, "", "")   # a restatement meaning "nothing further is intended"
 
 
 def distance(a: Proposal, b: Proposal) -> int:

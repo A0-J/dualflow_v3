@@ -1,0 +1,41 @@
+{
+  "time": "2026-11-04T03:57:54.248595+00:00",
+  "git": {
+    "commit": "b40fc5b131d4ecfd3686c6a6eff412f0945131fd",
+    "dirty": true
+  },
+  "python": "3.13.3",
+  "cwd": "C:\\dualflow_3",
+  "args": {
+    "name": "pilot",
+    "conditions": [
+      "B"
+    ],
+    "repeats": 3,
+    "domains": [
+      "audit",
+      "hr",
+      "ops",
+      "legal"
+    ],
+    "kinds": [
+      "similar_file",
+      "similar_action",
+      "similar_recipient",
+      "chain2",
+      "chain3",
+      "clear"
+    ],
+    "max_length": 1,
+    "planner": "gpt-4o-mini",
+    "executor": "gpt-4.1",
+    "n_restatements": 5,
+    "max_rounds": 2,
+    "dry_run": false,
+    "resume": false
+  },
+  "n_tasks": 16,
+  "conditions": [
+    "B"
+  ]
+}
