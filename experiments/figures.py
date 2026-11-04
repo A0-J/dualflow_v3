@@ -9,7 +9,8 @@ runs' derived/summary.md and derived/gate_rules.md.
 
   fig1_conditions_L1        completed / over-execution / unsafe / LLM calls per episode, by condition (L = 1)
   fig2_planner_vs_executed  Planner chain error (wrong or extra step sent) vs extra step actually executed (L = 1)
-  fig3_chain_length         chain ε_P by chain length L, one panel per condition
+  fig3_chain_length         chain ε_P by chain length L, one panel per condition (runs without request variants)
+  fig6_variant_length       chain ε_P and unsafe by L, explicit vs open request, per condition (runs with variants)
   fig4_gate_rules           task completion and unsafe episodes under five Semantic Verifier rules (G, NG)
   fig5_per_task             chain ε_P per task × condition
 """
@@ -110,7 +111,13 @@ def save(fig, out: Path, name: str) -> None:
 
 # ----------------------------------------------------------------------------- figures
 
-def fig1_conditions(eps: list[dict], out: Path) -> None:
+def design(eps: list[dict]) -> str:
+    tasks = {(e["domain"], e["task_id"]) for e in eps}
+    reps = len({e["repeat"] for e in eps})
+    return f"{len(tasks)} tasks × {reps} repeats"
+
+
+def fig1_conditions(eps: list[dict], out: Path, runs: str) -> None:
     l1 = by([e for e in eps if e["length"] == 1], "condition")
     panels = [("completed", "Task completed"), ("over_execution", "Extra step executed (over-execution)"),
               ("unsafe", "Unsafe episode"), (None, "LLM calls per episode")]
@@ -129,15 +136,16 @@ def fig1_conditions(eps: list[dict], out: Path) -> None:
         if m is not None:
             pct_axis(ax)
     n = len(l1[("B",)])
-    fig.suptitle(f"Phase 1, single-step tasks (L = 1): {n} episodes per condition", x=0.01, ha="left",
+    fig.suptitle(f"Single-step tasks (L = 1), {runs}: {n} episodes per condition", x=0.01, ha="left",
                  fontsize=11, fontweight="semibold", y=1.04)
     note(fig, f"{COND_KEY}. Dots: share of episodes; vertical lines: Wilson 95% interval.\n"
-              "16 seed tasks × 3 repeats. Planner gpt-4o-mini, Executor gpt-4.1, N = 5 restatements, R = 2 rounds.")
+              f"{design([e for e in eps if e['length'] == 1])}. Planner gpt-4o-mini, Executor gpt-4.1, "
+              "N = 5 restatements, R = 2 rounds.")
     fig.subplots_adjust(bottom=0.25, wspace=0.3)
     save(fig, out, "fig1_conditions_L1")
 
 
-def fig2_planner_vs_executed(eps: list[dict], out: Path) -> None:
+def fig2_planner_vs_executed(eps: list[dict], out: Path, runs: str) -> None:
     l1 = by([e for e in eps if e["length"] == 1], "condition")
     series = [("chain_eps_p", "Planner sent a wrong or extra step (chain ε_P)"),
               ("over_execution", "Extra step actually executed (over-execution)")]
@@ -151,7 +159,7 @@ def fig2_planner_vs_executed(eps: list[dict], out: Path) -> None:
     pct_axis(ax, 0.5)
     ax.set_title("The gate does not reduce the Planner's chain error; it stops its execution")
     ax.legend(loc="upper left", bbox_to_anchor=(0, -0.22), ncol=1)
-    note(fig, "Phase 1, L = 1, 48 episodes per condition. Wilson 95% intervals.")
+    note(fig, f"{runs}, L = 1, {len(l1[('B',)])} episodes per condition. Wilson 95% intervals.")
     fig.subplots_adjust(bottom=0.36)
     save(fig, out, "fig2_planner_vs_executed")
 
@@ -178,7 +186,7 @@ def fig3_chain_length(eps: list[dict], out: Path) -> None:
     save(fig, out, "fig3_chain_length")
 
 
-def fig4_gate_rules(eps: list[dict], dirs: list[Path], out: Path) -> None:
+def fig4_gate_rules(eps: list[dict], dirs: list[Path], out: Path, runs: str) -> None:
     stats = rule_stats(eps, n_restatements(dirs))
     fig, axes = plt.subplots(1, 2, figsize=(10, 3.4))
     for ax, (key, title) in zip(axes, [("completed", "Task completed"), ("unsafe_eps", "Unsafe episode")]):
@@ -198,14 +206,15 @@ def fig4_gate_rules(eps: list[dict], dirs: list[Path], out: Path) -> None:
                  ha="left", fontsize=11, fontweight="semibold", y=1.04)
     note(fig, "modal = as collected (ties to the earliest); majority = > N/2; tie reject = modal, reject ties; "
               "unanimous = all N agree; done veto = reject if any restatement is \"done\".\n"
-              "Phase 1 + Phase 2, N = 5. An episode stops at a rule's first rejection. Wilson 95% intervals.")
+              f"{runs}, N = 5. An episode stops at a rule's first rejection. Wilson 95% intervals.")
     fig.subplots_adjust(bottom=0.3, wspace=0.2)
     save(fig, out, "fig4_gate_rules")
 
 
-def fig5_per_task(eps: list[dict], out: Path) -> None:
+def fig5_per_task(eps: list[dict], out: Path, runs: str) -> None:
     g = by(eps, "task_id", "condition")
     tasks = sorted({(e["length"], e["kind"], e["task_id"]) for e in eps})
+    reps = len({e["repeat"] for e in eps})
     grid = [[rate(g[(t, c)], "chain_eps_p") for c in CONDITIONS] for _, _, t in tasks]
     fig, ax = plt.subplots(figsize=(5.6, 0.26 * len(tasks) + 1.4))
     cmap = LinearSegmentedColormap.from_list("seq_blue", SEQ_BLUE)
@@ -231,9 +240,39 @@ def fig5_per_task(eps: list[dict], out: Path) -> None:
     cb.ax.set_yticklabels(["0%", "50%", "100%"])
     cb.outline.set_visible(False)
     cb.ax.tick_params(colors=MUTED, labelcolor=INK_2, length=0)
-    ax.set_title("Chain-level ε_P per task (share of 3 repeats)", pad=24)
-    note(fig, "Gray cells: 0 of 3. Errors concentrate in a few L = 1 tasks. Phase 1 + Phase 2.")
+    ax.set_title(f"Chain-level ε_P per task (share of {reps} repeats)", pad=24)
+    note(fig, f"Gray cells: 0 of {reps}. {runs}.")
     save(fig, out, "fig5_per_task")
+
+
+def fig6_variant_length(eps: list[dict], out: Path, runs: str) -> None:
+    """Request explicitness crossed with chain length: one column per condition, explicit vs open per L."""
+    g = by(eps, "condition", "variant", "length")
+    lengths = sorted({e["length"] for e in eps})
+    rows = [("chain_eps_p", "Chain-level ε_P"), ("unsafe", "Unsafe episode")]
+    fig, axes = plt.subplots(len(rows), 4, figsize=(12, 6.0), sharey="row", sharex=True)
+    for r, (m, ylabel) in enumerate(rows):
+        for ax, c in zip(axes[r], CONDITIONS):
+            for j, v in enumerate(("explicit", "open")):
+                pts = [rate(g[(c, v, L)], m) for L in lengths]
+                xs = [L + (j - 0.5) * 0.12 for L in lengths]
+                ax.plot(xs, [p[0] for p in pts], color=SERIES[j], lw=2, solid_capstyle="round", zorder=2)
+                for x, (p, lo, hi, _, _) in zip(xs, pts):
+                    dot_ci(ax, x, p, lo, hi, SERIES[j], label=v if (r, c, x) == (0, "B", xs[0]) else None)
+            ax.set_xticks(lengths, [f"L = {L}\nn = {len(g[(c, 'open', L)])}" for L in lengths])
+            ax.set_xlim(lengths[0] - 0.4, lengths[-1] + 0.4)
+            pct_axis(ax, 1.0 if m == "chain_eps_p" else 0.75)
+            if r == 0:
+                ax.set_title(f"{c} · {COND_NAME[c]}")
+        axes[r][0].set_ylabel(ylabel)
+    axes[0][0].legend(loc="upper left", title=None)
+    fig.suptitle(f"Request explicitness × chain length ({runs})", x=0.01, ha="left", fontsize=11,
+                 fontweight="semibold", y=1.01)
+    note(fig, "explicit: the request names each step and where to stop; open: the goal only. "
+              "n = episodes per variant. Wilson 95% intervals.\nScored by step position against o*: an inserted "
+              "step shifts the rest of the chain, so a correct later step can count as extra.")
+    fig.subplots_adjust(bottom=0.16, hspace=0.35, wspace=0.12)
+    save(fig, out, "fig6_variant_length")
 
 
 def main() -> None:
@@ -247,11 +286,15 @@ def main() -> None:
     eps, errors = load(dirs)
     print(f"{len(eps)} episodes from {', '.join(d.name for d in dirs)} ({len(errors)} errored, excluded) -> {out}")
     style()
-    fig1_conditions(eps, out)
-    fig2_planner_vs_executed(eps, out)
-    fig3_chain_length(eps, out)
-    fig4_gate_rules(eps, dirs, out)
-    fig5_per_task(eps, out)
+    runs = " + ".join(d.name for d in dirs)
+    fig1_conditions(eps, out, runs)
+    fig2_planner_vs_executed(eps, out, runs)
+    if any(e.get("variant", "base") != "base" for e in eps):
+        fig6_variant_length(eps, out, runs)       # explicitness crossed with L replaces the confounded L plot
+    else:
+        fig3_chain_length(eps, out)
+    fig4_gate_rules(eps, dirs, out, runs)
+    fig5_per_task(eps, out, runs)
 
 
 if __name__ == "__main__":
