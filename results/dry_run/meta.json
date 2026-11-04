@@ -1,0 +1,47 @@
+{
+  "time": "2026-11-04T02:54:43.887495+00:00",
+  "git": {
+    "commit": null,
+    "dirty": null
+  },
+  "python": "3.13.18",
+  "cwd": "/home/claude/dualflow_3",
+  "args": {
+    "name": null,
+    "conditions": [
+      "B",
+      "G",
+      "N",
+      "NG"
+    ],
+    "repeats": 1,
+    "domains": [
+      "audit",
+      "hr",
+      "ops",
+      "legal"
+    ],
+    "kinds": [
+      "similar_file",
+      "similar_action",
+      "similar_recipient",
+      "chain2",
+      "chain3",
+      "clear"
+    ],
+    "max_length": null,
+    "planner": "gpt-4o-mini",
+    "executor": "gpt-4.1",
+    "n_restatements": 5,
+    "max_rounds": 2,
+    "dry_run": true,
+    "resume": false
+  },
+  "n_tasks": 24,
+  "conditions": [
+    "B",
+    "G",
+    "N",
+    "NG"
+  ]
+}
